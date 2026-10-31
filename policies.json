@@ -4,6 +4,10 @@
     "OfferToSaveLogins": false,
     "AutofillAddressEnabled": false,
     "AutofillCreditCardEnabled": false,
+    "SearchEngines": {
+      "Default": "DuckDuckGo",
+      "PreventInstalls": true
+    },
     "ExtensionSettings": {
       "*": {
         "installation_mode": "blocked",

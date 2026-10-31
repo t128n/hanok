@@ -54,6 +54,10 @@ user_pref("services.sync.engine.passwords", false);
 user_pref("services.sync.engine.addresses", false);
 user_pref("services.sync.engine.creditcards", false);
 
+// Extensions and prefs are managed by hanok, not by Sync.
+user_pref("services.sync.engine.addons", false);
+user_pref("services.sync.engine.prefs", false);
+
 // Generic form history is already disabled by arkenfox:
 // user_pref("browser.formfill.enable", false);
 

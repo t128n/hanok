@@ -81,12 +81,14 @@ const EXPECTED_PREFS = new Map([
   ["services.sync.engine.passwords", "false"],
   ["services.sync.engine.addresses", "false"],
   ["services.sync.engine.creditcards", "false"],
+  ["services.sync.engine.addons", "false"],
+  ["services.sync.engine.prefs", "false"],
   ["browser.translations.neverTranslateLanguages", '"de"'],
 ]);
 
 function lastPrefValue(text, name) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const pattern = new RegExp(`user_pref\\("${escaped}"\\s*,\\s*([^)]+)\\);`, "g");
+  const pattern = new RegExp(`^user_pref\\("${escaped}"\\s*,\\s*([^)]+)\\);`, "gm");
   let value = null;
   for (const match of text.matchAll(pattern)) value = match[1].trim();
   return value;
@@ -124,6 +126,15 @@ async function checkPolicies() {
       `${name}: ${expected ? "true" : "false"}`,
     );
   }
+
+  check(
+    parsed?.policies?.SearchEngines?.Default === "DuckDuckGo",
+    "default search engine: DuckDuckGo",
+  );
+  check(
+    parsed?.policies?.SearchEngines?.PreventInstalls === true,
+    "search engine installs are blocked",
+  );
 }
 
 async function checkOnline() {

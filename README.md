@@ -67,6 +67,9 @@ to check the three AMO URLs.
   disabled; `about:logins` is blocked; password sync is off (Proton Pass still
   works)
 - **form autofill**: address and payment autofill/save prompts are disabled
+- **search**: DuckDuckGo pinned as default; adding search engines is blocked
+- **sync**: bookmarks, tabs and history sync; addons, prefs, passwords, addresses
+  and credit cards are excluded
 - **translations**: German is never offered or auto-translated; other languages
   can still be offered
 - **Zen UI**: layout, tabs, sidebar, compact mode, URL bar, theme, workspaces,
