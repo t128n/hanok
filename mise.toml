@@ -1,0 +1,18 @@
+[tools]
+bun = "1.4.4"
+
+[tasks.apply]
+description = "Link hanok into the Zen profile and install policies"
+run = "bun scripts/apply.mjs"
+
+[tasks.policies]
+description = "Reinstall policies.json only (after a Zen update)"
+run = "bun scripts/apply.mjs --policies-only"
+
+[tasks.update]
+description = "Update the pinned arkenfox base and regenerate user.js"
+run = "bun scripts/update-arkenfox.mjs"
+
+[tasks.verify]
+description = "Validate hanok against the installed Zen"
+run = "bun scripts/verify.mjs"
