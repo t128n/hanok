@@ -1,5 +1,9 @@
 {
   "policies": {
+    "PasswordManagerEnabled": false,
+    "OfferToSaveLogins": false,
+    "AutofillAddressEnabled": false,
+    "AutofillCreditCardEnabled": false,
     "ExtensionSettings": {
       "*": {
         "installation_mode": "blocked",

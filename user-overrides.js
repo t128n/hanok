@@ -35,6 +35,36 @@ user_pref("privacy.fingerprintingProtection", true);
 user_pref("privacy.fingerprintingProtection.pbmode", true);
 
 // ---------------------------------------------------------------------------
+// Built-in password manager and form autofill
+// ---------------------------------------------------------------------------
+
+// Firefox password manager off; Proton Pass is unaffected.
+user_pref("signon.rememberSignons", false);
+user_pref("signon.autofillForms", false);
+user_pref("signon.generation.enabled", false);
+user_pref("signon.management.page.breach-alerts.enabled", false);
+
+// No address/payment capture or autofill, even if policies.json is missing.
+user_pref("extensions.formautofill.addresses.enabled", false);
+user_pref("extensions.formautofill.addresses.capture.enabled", false);
+user_pref("extensions.formautofill.creditCards.enabled", false);
+
+// Keep bookmarks/tabs/history sync, but never sync credentials or form data.
+user_pref("services.sync.engine.passwords", false);
+user_pref("services.sync.engine.addresses", false);
+user_pref("services.sync.engine.creditcards", false);
+
+// Generic form history is already disabled by arkenfox:
+// user_pref("browser.formfill.enable", false);
+
+// ---------------------------------------------------------------------------
+// Translations
+// ---------------------------------------------------------------------------
+
+// Never offer to translate German. Other languages can still be offered.
+user_pref("browser.translations.neverTranslateLanguages", "de");
+
+// ---------------------------------------------------------------------------
 // Zen: startup, noise and updates
 // ---------------------------------------------------------------------------
 

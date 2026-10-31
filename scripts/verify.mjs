@@ -63,6 +63,35 @@ const EXPECTED = new Map([
   ["{6fb36f3e-9bc8-4569-9c40-cc7d3db28034}", "consenter-agent"],
 ]);
 
+const EXPECTED_POLICIES = new Map([
+  ["PasswordManagerEnabled", false],
+  ["OfferToSaveLogins", false],
+  ["AutofillAddressEnabled", false],
+  ["AutofillCreditCardEnabled", false],
+]);
+
+const EXPECTED_PREFS = new Map([
+  ["signon.rememberSignons", "false"],
+  ["signon.autofillForms", "false"],
+  ["signon.generation.enabled", "false"],
+  ["signon.management.page.breach-alerts.enabled", "false"],
+  ["extensions.formautofill.addresses.enabled", "false"],
+  ["extensions.formautofill.addresses.capture.enabled", "false"],
+  ["extensions.formautofill.creditCards.enabled", "false"],
+  ["services.sync.engine.passwords", "false"],
+  ["services.sync.engine.addresses", "false"],
+  ["services.sync.engine.creditcards", "false"],
+  ["browser.translations.neverTranslateLanguages", '"de"'],
+]);
+
+function lastPrefValue(text, name) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`user_pref\\("${escaped}"\\s*,\\s*([^)]+)\\);`, "g");
+  let value = null;
+  for (const match of text.matchAll(pattern)) value = match[1].trim();
+  return value;
+}
+
 async function checkPolicies() {
   step("policies");
   const raw = await fsp.readFile(repoPolicies, "utf8");
@@ -88,6 +117,13 @@ async function checkPolicies() {
   }
 
   check(parsed?.policies?.ExtensionUpdate === true, "extension updates are enabled");
+
+  for (const [name, expected] of EXPECTED_POLICIES) {
+    check(
+      parsed?.policies?.[name] === expected,
+      `${name}: ${expected ? "true" : "false"}`,
+    );
+  }
 }
 
 async function checkOnline() {
@@ -141,6 +177,13 @@ async function checkUserJs() {
     userJs.trimEnd().endsWith(overrides.trimEnd()),
     "user-overrides.js is appended unchanged",
   );
+
+  for (const [name, expected] of EXPECTED_PREFS) {
+    check(
+      lastPrefValue(userJs, name) === expected,
+      `${name} = ${expected}`,
+    );
+  }
 }
 
 async function checkProfile() {

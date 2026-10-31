@@ -63,6 +63,12 @@ to check the three AMO URLs.
   session/workspace restore kept; cache and form data cleared on exit
 - **extensions**: uBlock Origin, Proton Pass, Consenter — `force_installed`;
   everything else blocked
+- **passwords**: Firefox's built-in manager, saving, autofill and generation are
+  disabled; `about:logins` is blocked; password sync is off (Proton Pass still
+  works)
+- **form autofill**: address and payment autofill/save prompts are disabled
+- **translations**: German is never offered or auto-translated; other languages
+  can still be offered
 - **Zen UI**: layout, tabs, sidebar, compact mode, URL bar, theme, workspaces,
   window sync, folders, split view, glance, library, downloads, pinned tabs and
   boosts are pinned in `user-overrides.js`
@@ -126,3 +132,8 @@ Restore anything you need from the backups, then restart Zen.
 - The config is deterministic at startup, not frozen at runtime: prefs changed
   in `about:config` during a session are reverted on the next start because
   `user.js` is re-applied.
+- Disabling the password manager does not delete existing credentials. They
+  remain in `logins.db`. To purge them, quit Zen and remove that file; password
+  sync is disabled, so it will not re-download them.
+- `browser.translations.neverTranslateLanguages` is pinned to `de`, so other
+  never-translate languages added through the UI will be reset on restart.
