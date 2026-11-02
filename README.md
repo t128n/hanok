@@ -1,21 +1,31 @@
 # hanok
 
 Deterministic Zen Browser configuration: a pinned arkenfox base, a daily-driver
-override set, pinned Zen UI prefs, and three force-installed extensions.
+override set, pinned Zen UI prefs, and three force-installed extensions. Runs on
+macOS and Windows.
 
-Hanok lives under XDG paths:
+Hanok uses platform-native paths:
 
-- repo: `$XDG_CONFIG_HOME/hanok` (default `~/.config/hanok`)
-- backups: `$XDG_STATE_HOME/hanok/backups`
-- cache: `$XDG_CACHE_HOME/hanok`
+| | macOS | Windows |
+|---|---|---|
+| repo | `~/.config/hanok` | `%APPDATA%\hanok` |
+| backups | `$XDG_STATE_HOME/hanok/backups` (default `~/.local/state/hanok/backups`) | `%LOCALAPPDATA%\hanok\backups` |
+| cache | `$XDG_CACHE_HOME/hanok` (default `~/.cache/hanok`) | `%LOCALAPPDATA%\Cache\hanok` |
+| Zen profile data | `~/Library/Application Support/zen` | `%APPDATA%\zen` |
+| Zen install | `/Applications/Zen.app` | `%ProgramFiles%\Zen Browser` |
+
+The repo can live anywhere; the table shows the default location. Hanok
+auto-detects Zen under `Program Files`, `Program Files (x86)` and per-user
+installs under `%LOCALAPPDATA%\Programs`. Set `ZEN_APP` to override the install
+directory on either platform.
 
 ## How it works
 
 | Layer | Location | Survives Zen update | Enforced |
 |---|---|---|---|
-| `user.js` | profile root (symlink) | yes | re-applied every startup |
-| `chrome/*.css` | profile `chrome/` (symlinks) | yes | at startup |
-| `policies.json` | `Zen.app/Contents/Resources/distribution/` | no | at startup |
+| `user.js` | profile root (symlink, or copy on Windows) | yes | re-applied every startup |
+| `chrome/*.css` | profile `chrome/` (symlinks, or copies on Windows) | yes | at startup |
+| `policies.json` | macOS: `Zen.app/Contents/Resources/distribution/`; Windows: `<install>\distribution\` | no | at startup |
 
 `user.js` is generated from arkenfox plus `user-overrides.js`. Do not edit
 `user.js`; edit `user-overrides.js` and run `mise run update`.
@@ -27,6 +37,8 @@ regenerate it.
 
 Requires [mise](https://mise.jdx.dev/). Bun is pinned in `mise.toml`.
 
+macOS:
+
 ```bash
 cd ~/.config/hanok
 mise trust
@@ -35,14 +47,41 @@ mise run update     # generate user.js from the pinned arkenfox base
 mise run apply      # link profile files + install policies.json
 ```
 
-Quit Zen completely (Cmd+Q) and reopen. Check:
+Windows (PowerShell):
+
+```powershell
+cd $env:APPDATA\hanok
+mise trust
+mise install
+mise run update
+mise run apply
+```
+
+If hanok is cloned elsewhere, `cd` there instead. On Windows, writing
+`policies.json` into a `Program Files` install needs an elevated terminal. For a
+per-user install, no elevation is needed:
+
+```powershell
+$env:ZEN_APP = "$env:LOCALAPPDATA\Programs\Zen Browser"
+mise run apply
+```
+
+`apply` creates symlinks in the profile when the OS allows it. On Windows
+without Developer Mode, symlink creation is denied, so hanok copies the files
+instead and reports `copied`. In that mode, run `mise run apply` again after
+editing `user.js`, `user-overrides.js` or the CSS files.
+
+If profile auto-detection fails, pass `--profile <path>` or set `ZEN_PROFILE`.
+
+Quit Zen completely (Cmd+Q on macOS; exit from the tray on Windows) and reopen.
+Check:
 
 - `about:policies` — `ExtensionSettings` with no errors
 - `about:addons` — uBlock Origin, Proton Pass, Consenter, not removable
 - `about:config` — `browser.startup.page = 3`,
   `privacy.clearOnShutdown_v2.cookiesAndStorage = false`,
   `extensions.enabledScopes = 15`
-- `about:support` — Profile Directory contains the symlinked `user.js`
+- `about:support` — Profile Directory contains hanok's `user.js`
 
 ## Tasks
 
@@ -95,25 +134,26 @@ writing anything.
 
 ## After a Zen update
 
-Zen replaces its app bundle, which removes `policies.json`. Profile files are
-safe. Run:
+Zen replaces its app bundle or install directory, which removes `policies.json`.
+Profile files are safe. Run:
 
 ```bash
 mise run policies
 ```
 
-and restart Zen. Optionally, a LaunchAgent can run that after updates; hanok
-does not install one by default.
+and restart Zen. On Windows, use an elevated terminal if Zen is installed under
+`Program Files`. Optionally, a LaunchAgent (macOS) or scheduled task (Windows)
+can run that after updates; hanok does not install one by default.
 
 ## Backups and uninstall
 
-Every `apply` copies replaced files to
-`$XDG_STATE_HOME/hanok/backups/<timestamp>/`.
+Every `apply` copies replaced files to the platform backup directory shown
+above, under `<timestamp>/`.
 
-To uninstall:
+To uninstall on macOS:
 
 ```bash
-# remove the symlinks from the profile
+# remove the symlinks or copies from the profile
 rm ~/Library/Application\ Support/zen/Profiles/*/user.js
 rm ~/Library/Application\ Support/zen/Profiles/*/chrome/userChrome.css
 rm ~/Library/Application\ Support/zen/Profiles/*/chrome/userContent.css
@@ -122,14 +162,27 @@ rm ~/Library/Application\ Support/zen/Profiles/*/chrome/userContent.css
 rm /Applications/Zen.app/Contents/Resources/distribution/policies.json
 ```
 
+To uninstall on Windows (PowerShell; elevated if Zen is under `Program Files`):
+
+```powershell
+Remove-Item "$env:APPDATA\zen\Profiles\*\user.js"
+Remove-Item "$env:APPDATA\zen\Profiles\*\chrome\userChrome.css"
+Remove-Item "$env:APPDATA\zen\Profiles\*\chrome\userContent.css"
+Remove-Item "$env:ProgramFiles\Zen Browser\distribution\policies.json"
+```
+
 Restore anything you need from the backups, then restart Zen.
 
 ## Notes
 
-- `policies.json` is an enterprise-policy file inside the app bundle. It is
-  read at startup and removed by Zen updates. It can invalidate the app's code
-  signature seal; this is the standard Firefox enterprise-policy mechanism and
-  does not prevent Zen from launching.
+- `policies.json` is an enterprise-policy file inside the install directory. It
+  is read at startup and removed by Zen updates. On macOS it can invalidate the
+  app's code-signature seal; on Windows the install directory may require
+  Administrator rights. This is the standard Firefox enterprise-policy
+  mechanism and does not prevent Zen from launching.
+- On Windows, profile files are linked when symlinks are available (Developer
+  Mode or elevation). Otherwise hanok copies them; `verify` accepts either and
+  fails if a copy drifts from the repo.
 - Force-installed extensions still receive AMO updates. Use
   `"updates_disabled": true` per add-on if you want frozen versions.
 - The config is deterministic at startup, not frozen at runtime: prefs changed

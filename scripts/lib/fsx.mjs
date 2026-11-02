@@ -32,13 +32,29 @@ export function linkTarget(dest) {
   }
 }
 
-export async function ensureSymlink(src, dest) {
+export function sameContent(a, b) {
+  try {
+    const left = fs.statSync(a);
+    const right = fs.statSync(b);
+    if (!left.isFile() || !right.isFile() || left.size !== right.size) return false;
+    return fs.readFileSync(a).equals(fs.readFileSync(b));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Link a file into place. Windows blocks symlinks unless Developer Mode or
+ * elevation is enabled, so fall back to a copy there.
+ * Returns "symlink" or "copy".
+ */
+export async function ensureLink(src, dest) {
   if (!fs.existsSync(src)) {
     throw new Error(`missing source: ${src}`);
   }
 
   const target = path.resolve(src);
-  if (linkTarget(dest) === target) return false;
+  if (linkTarget(dest) === target) return "symlink";
 
   let stat = null;
   try {
@@ -51,8 +67,17 @@ export async function ensureSymlink(src, dest) {
   }
   if (stat) await fsp.unlink(dest);
 
-  await fsp.symlink(target, dest);
-  return true;
+  try {
+    await fsp.symlink(target, dest);
+    return "symlink";
+  } catch (error) {
+    const canCopy =
+      process.platform === "win32" &&
+      ["EPERM", "EACCES", "EINVAL", "UNKNOWN"].includes(error.code);
+    if (!canCopy) throw error;
+    await fsp.copyFile(target, dest);
+    return "copy";
+  }
 }
 
 export async function atomicWrite(dest, data) {

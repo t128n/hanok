@@ -4,15 +4,62 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseIni } from "./ini.mjs";
 
+const home = os.homedir();
+const isWindows = process.platform === "win32";
+const isMac = process.platform === "darwin";
+
+const roamingAppData = process.env.APPDATA || path.join(home, "AppData", "Roaming");
+const localAppData = process.env.LOCALAPPDATA || path.join(home, "AppData", "Local");
+
 export const repoRoot = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
 
-export const configHome = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config");
-export const stateHome = process.env.XDG_STATE_HOME || path.join(os.homedir(), ".local", "state");
-export const cacheHome = process.env.XDG_CACHE_HOME || path.join(os.homedir(), ".cache");
+export const configHome =
+  process.env.XDG_CONFIG_HOME ||
+  (isWindows ? roamingAppData : path.join(home, ".config"));
+export const stateHome =
+  process.env.XDG_STATE_HOME ||
+  (isWindows ? localAppData : path.join(home, ".local", "state"));
+export const cacheHome =
+  process.env.XDG_CACHE_HOME ||
+  (isWindows ? path.join(localAppData, "Cache") : path.join(home, ".cache"));
 
-export const zenRoot = process.env.ZEN_APP || "/Applications/Zen.app";
-export const zenDataDir = path.join(os.homedir(), "Library", "Application Support", "zen");
-export const zenResourcesDir = path.join(zenRoot, "Contents", "Resources");
+function defaultZenRoot() {
+  if (isMac) return "/Applications/Zen.app";
+
+  if (isWindows) {
+    const programFiles =
+      process.env.ProgramFiles || process.env.PROGRAMFILES || "C:\\Program Files";
+    const programFilesX86 =
+      process.env["ProgramFiles(x86)"] ||
+      process.env["PROGRAMFILES(X86)"] ||
+      "C:\\Program Files (x86)";
+
+    const candidates = [
+      path.join(programFiles, "Zen Browser"),
+      path.join(programFilesX86, "Zen Browser"),
+      path.join(localAppData, "Programs", "Zen Browser"),
+      path.join(localAppData, "Programs", "zen-browser"),
+      path.join(localAppData, "Zen Browser"),
+    ];
+
+    return (
+      candidates.find((candidate) => fs.existsSync(path.join(candidate, "zen.exe"))) ||
+      candidates[0]
+    );
+  }
+
+  return path.join(home, ".zen");
+}
+
+export const zenRoot = process.env.ZEN_APP || defaultZenRoot();
+export const zenDataDir = isWindows
+  ? path.join(roamingAppData, "zen")
+  : isMac
+    ? path.join(home, "Library", "Application Support", "zen")
+    : path.join(home, ".zen");
+export const zenResourcesDir = isMac
+  ? path.join(zenRoot, "Contents", "Resources")
+  : zenRoot;
 export const zenPoliciesDir = path.join(zenResourcesDir, "distribution");
 export const zenPoliciesPath = path.join(zenPoliciesDir, "policies.json");
 
