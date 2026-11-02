@@ -4,6 +4,25 @@ Deterministic Zen Browser configuration: a pinned arkenfox base, a daily-driver
 override set, pinned Zen UI prefs, and three force-installed extensions. Runs on
 macOS and Windows.
 
+## Quick start
+
+macOS:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/t128n/hanok/main/install.sh | bash
+```
+
+Windows (PowerShell):
+
+```powershell
+irm https://raw.githubusercontent.com/t128n/hanok/main/install.ps1 | iex
+```
+
+The scripts clone hanok into the default repo path, install mise if it is
+missing, then run `update` and `apply`. On Windows, use an elevated PowerShell if
+Zen is installed under `Program Files`. Set `HANOK_DIR` to clone somewhere else,
+or `HANOK_REPO_URL` to use a different remote.
+
 Hanok uses platform-native paths:
 
 | | macOS | Windows |
@@ -33,7 +52,7 @@ directory on either platform.
 Zen's own `chrome/zen-themes.css` is deliberately left untouched: Zen Mods
 regenerate it.
 
-## Setup
+## Manual setup
 
 Requires [mise](https://mise.jdx.dev/). Bun is pinned in `mise.toml`.
 
