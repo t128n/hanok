@@ -3,7 +3,6 @@ import path from "node:path";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import { parseArgs } from "node:util";
-import { spawnSync } from "node:child_process";
 
 import {
   repoRoot,
@@ -19,11 +18,13 @@ import {
 import {
   backupFile,
   ensureDir,
-  ensureSymlink,
+  ensureLink,
   linkTarget,
+  sameContent,
   exists,
   timestamp,
 } from "./lib/fsx.mjs";
+import { zenRunning } from "./lib/zen.mjs";
 import { bold, dim, step, info, ok, warn, fail } from "./lib/log.mjs";
 
 const USAGE = `
@@ -74,17 +75,24 @@ async function backup(dest, label) {
 async function link(src, dest, label) {
   const target = path.resolve(src);
   if (!exists(src)) throw new Error(`missing source: ${src}`);
-  if (linkTarget(dest) === target) {
+
+  const linked = linkTarget(dest);
+  if (linked === target) {
     ok(`${label} already linked`);
     return;
   }
-  if (linkTarget(dest) || exists(dest)) await backup(dest, label);
-  if (dryRun) {
-    info(`would link ${dest} -> ${target}`);
+  if (!linked && sameContent(dest, target)) {
+    ok(`${label} already copied`);
     return;
   }
-  await ensureSymlink(src, dest);
-  ok(`${label} linked`);
+  if (linked || exists(dest)) await backup(dest, label);
+  if (dryRun) {
+    info(`would install ${dest} -> ${target}`);
+    return;
+  }
+
+  const mode = await ensureLink(src, dest);
+  ok(mode === "symlink" ? `${label} linked` : `${label} copied (symlink unavailable)`);
 }
 
 async function applyProfile(profile) {
@@ -117,7 +125,11 @@ async function applyPolicies() {
   info(`${managed.length} force-installed extensions`);
 
   if (!exists(zenRoot)) {
-    throw new Error(`Zen.app not found at ${zenRoot}; set ZEN_APP if needed`);
+    const hint =
+      process.platform === "win32"
+        ? "set ZEN_APP to the Zen install directory"
+        : "set ZEN_APP if needed";
+    throw new Error(`Zen not found at ${zenRoot}; ${hint}`);
   }
 
   let installed = null;
@@ -138,11 +150,23 @@ async function applyPolicies() {
     return;
   }
 
-  await ensureDir(zenPoliciesDir);
-  const tmp = `${zenPoliciesPath}.tmp-${process.pid}`;
-  await fsp.writeFile(tmp, raw, "utf8");
-  await fsp.rename(tmp, zenPoliciesPath);
-  await fsp.chmod(zenPoliciesPath, 0o644);
+  try {
+    await ensureDir(zenPoliciesDir);
+    const tmp = `${zenPoliciesPath}.tmp-${process.pid}`;
+    await fsp.writeFile(tmp, raw, "utf8");
+    await fsp.rename(tmp, zenPoliciesPath);
+    if (process.platform !== "win32") await fsp.chmod(zenPoliciesPath, 0o644);
+  } catch (error) {
+    if (
+      process.platform === "win32" &&
+      ["EACCES", "EPERM", "EROFS"].includes(error.code)
+    ) {
+      throw new Error(
+        `cannot write ${zenPoliciesPath} (${error.code}); run elevated or set ZEN_APP to a writable install`,
+      );
+    }
+    throw error;
+  }
   ok(`installed ${zenPoliciesPath}`);
 }
 
@@ -163,12 +187,12 @@ async function main() {
   }
 
   step("next");
-  if (process.platform === "darwin") {
-    const running =
-      spawnSync("pgrep", ["-f", "Zen.app/Contents/MacOS/zen"], { stdio: "ignore" }).status === 0;
-    if (running) {
-      warn("Zen is running. Quit completely (Cmd+Q), then reopen.");
-    }
+  if (zenRunning()) {
+    const quit =
+      process.platform === "darwin"
+        ? "Quit completely (Cmd+Q)"
+        : "Quit Zen completely";
+    warn(`${quit}, then reopen.`);
   }
   info("Check about:policies and about:addons after restarting Zen.");
   if (dryRun) info(dim("dry run only — nothing was changed"));

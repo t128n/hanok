@@ -3,7 +3,6 @@ import path from "node:path";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import { parseArgs } from "node:util";
-import { spawnSync } from "node:child_process";
 
 import {
   repoRoot,
@@ -11,11 +10,11 @@ import {
   repoOverrides,
   repoPolicies,
   repoChrome,
-  zenRoot,
   zenPoliciesPath,
   resolveProfile,
 } from "./lib/paths.mjs";
-import { exists, linkTarget } from "./lib/fsx.mjs";
+import { exists, linkTarget, sameContent } from "./lib/fsx.mjs";
+import { zenRunning, zenVersion } from "./lib/zen.mjs";
 import { bold, dim, step, info, ok, warn, fail } from "./lib/log.mjs";
 
 const USAGE = `
@@ -218,7 +217,13 @@ async function checkProfile() {
 
   for (const [relative, source] of expectedLinks) {
     const dest = path.join(profile, relative);
-    check(linkTarget(dest) === path.resolve(source), `${relative} is linked to hanok`);
+    if (linkTarget(dest) === path.resolve(source)) {
+      ok(`${relative} is linked to hanok`);
+    } else if (sameContent(dest, source)) {
+      ok(`${relative} matches hanok (copy)`);
+    } else {
+      check(false, `${relative} does not match hanok`);
+    }
   }
 
   let installed = null;
@@ -238,18 +243,19 @@ async function checkProfile() {
 function checkEnvironment() {
   step("environment");
   info(dim(`repo: ${repoRoot}`));
+  info(dim(`platform: ${process.platform}`));
 
-  if (process.platform === "darwin") {
-    const version = spawnSync(
-      "defaults",
-      ["read", path.join(zenRoot, "Contents", "Info.plist"), "CFBundleShortVersionString"],
-      { encoding: "utf8" },
-    );
-    check(version.status === 0, `Zen version: ${version.stdout?.trim() || "unknown"}`);
+  const version = zenVersion();
+  if (version) {
+    ok(`Zen version: ${version}`);
+  } else if (process.platform === "darwin" || process.platform === "win32") {
+    check(false, "Zen version: unknown");
+  } else {
+    info("Zen version: unknown");
+  }
 
-    const running =
-      spawnSync("pgrep", ["-f", "Zen.app/Contents/MacOS/zen"], { stdio: "ignore" }).status === 0;
-    if (running) warn("Zen is running; user.js and policies take effect after a full restart");
+  if (zenRunning()) {
+    warn("Zen is running; user.js and policies take effect after a full restart");
   }
 }
 
